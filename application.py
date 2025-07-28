@@ -3,6 +3,7 @@ import pandas as pd
 import io
 from openpyxl import Workbook
 from openpyxl.utils.dataframe import dataframe_to_rows
+from openpyxl.styles import Alignment
 
 # Set page configuration
 st.set_page_config(page_title="Bin Divider Specification Generator", page_icon=":package:", layout="wide")
@@ -45,6 +46,7 @@ def generate_excel(groups):
         'Bin Gross CBM', 'Bin Net CBM'
     ]
     df = pd.DataFrame(columns=columns)
+    group_row_counts = []
     for group in groups:
         group_data = group['group_data']
         for bin_data in group['bins']:
@@ -54,12 +56,32 @@ def generate_excel(groups):
                 if col not in row:
                     row[col] = None
             df = pd.concat([df, pd.DataFrame([row])], ignore_index=True)
+        group_row_counts.append(len(group['bins']) if group['bins'] else 1)
+
     output = io.BytesIO()
     wb = Workbook()
     ws = wb.active
     ws.title = "Bin Box"
-    for r in dataframe_to_rows(df, index=False, header=True):
+
+    # Write DataFrame to Excel
+    for r_idx, r in enumerate(dataframe_to_rows(df, index=False, header=True), 1):
         ws.append(r)
+
+    # Merge and center cells for Mod, Start Aisle, and End Aisle
+    current_row = 2  # Start after header
+    for row_count in group_row_counts:
+        if row_count > 0:
+            # Merge Mod (column C, index 3 in Excel)
+            ws.merge_cells(start_row=current_row, start_column=3, end_row=current_row + row_count - 1, end_column=3)
+            ws.cell(row=current_row, column=3).alignment = Alignment(horizontal='center')
+            # Merge Start Aisle (column E, index 5 in Excel)
+            ws.merge_cells(start_row=current_row, start_column=5, end_row=current_row + row_count - 1, end_column=5)
+            ws.cell(row=current_row, column=5).alignment = Alignment(horizontal='center')
+            # Merge End Aisle (column F, index 6 in Excel)
+            ws.merge_cells(start_row=current_row, start_column=6, end_row=current_row + row_count - 1, end_column=6)
+            ws.cell(row=current_row, column=6).alignment = Alignment(horizontal='center')
+            current_row += row_count
+
     wb.save(output)
     output.seek(0)
     return output.getvalue()
