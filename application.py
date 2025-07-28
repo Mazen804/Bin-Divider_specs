@@ -32,7 +32,7 @@ if 'groups' not in st.session_state:
 def calculate_fields(group_data, bin_data):
     bin_data['# of Aisles'] = group_data['End Aisle'] - group_data['Start Aisle'] + 1
     bin_data['Qty Per Bay'] = bin_data['# of Shelves per Bay'] * bin_data['Qty bins per Shelf']
-    bin_data['Total Quantity'] = bin_data['Qty Per Bay'] * group_data['# of Bays']  # Updated: Removed * # of Aisles
+    bin_data['Total Quantity'] = bin_data['Qty Per Bay'] * group_data['# of Bays']
     bin_data['Bin Gross CBM'] = (bin_data['Depth (mm)'] * bin_data['Height (mm)'] * bin_data['Width (mm)']) / 1_000_000
     bin_data['Bin Net CBM'] = bin_data['Bin Gross CBM'] * bin_data['UT']
     return bin_data
@@ -115,7 +115,9 @@ if st.button("Add New Group"):
 
 # Display and edit groups
 for group_idx, group in enumerate(st.session_state.groups):
-    with st.expander(f"Group {group_idx + 1}: {group['group_data']['Group Name'] or 'Untitled'} ({'Finalized' if group['finalized'] else 'Editing'})", expanded=not group['finalized']):
+    # Set expanded=True for newly copied groups (last group if it was just copied)
+    is_new_copy = group_idx == len(st.session_state.groups) - 1 and st.session_state.get('last_action') == f"copy_{group_idx-1}"
+    with st.expander(f"Group {group_idx + 1}: {group['group_data']['Group Name'] or 'Untitled'} ({'Finalized' if group['finalized'] else 'Editing'})", expanded=not group['finalized'] or is_new_copy):
         if not group['finalized']:
             # Group inputs
             st.write("**Group Details**")
@@ -185,7 +187,9 @@ if st.session_state.groups:
             if st.button(f"Copy Group {i + 1}", key=f"copy_{i}"):
                 new_group = copy.deepcopy(group)
                 new_group['finalized'] = False
+                new_group['group_data']['Group Name'] = f"{new_group['group_data']['Group Name']} (Copy)" if new_group['group_data']['Group Name'] else "Untitled (Copy)"
                 st.session_state.groups.append(new_group)
+                st.session_state['last_action'] = f"copy_{i}"  # Track last copy action
                 st.success(f"Group {i + 1} copied!")
                 st.rerun()
 
