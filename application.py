@@ -49,7 +49,6 @@ def generate_excel(groups):
         group_data = group['group_data']
         for bin_data in group['bins']:
             row = {**group_data, **bin_data}
-            # Set Lip (cm) to "-" if 0.0
             row['Lip (cm)'] = '-' if row['Lip (cm)'] == 0.0 else row['Lip (cm)']
             for col in columns:
                 if col not in row:
@@ -70,14 +69,14 @@ st.subheader("Manage Groups and Bin Box Types")
 if st.button("Add New Group"):
     st.session_state.groups.append({
         'group_data': {
-            'Floor': 'P-1',
-            'Mod': 'H',
-            'Depth': '600mm',
-            'Start Aisle': 200,
-            'End Aisle': 200,
-            '# of Bays': 12,
-            'Total # of Shelves per Bay': 5,
-            'Bay Design': '60 Deep HRV'
+            'Floor': '',
+            'Mod': '',
+            'Depth': '',
+            'Start Aisle': 1,
+            'End Aisle': 1,
+            '# of Bays': 1,
+            'Total # of Shelves per Bay': 1,
+            'Bay Design': ''
         },
         'bins': [],
         'bin_count': 0,
@@ -86,7 +85,7 @@ if st.button("Add New Group"):
 
 # Display and edit groups
 for group_idx, group in enumerate(st.session_state.groups):
-    with st.expander(f"Group {group_idx + 1}: {group['group_data']['Bay Design']} ({'Finalized' if group['finalized'] else 'Editing'})", expanded=not group['finalized']):
+    with st.expander(f"Group {group_idx + 1}: {group['group_data']['Bay Design'] or 'Untitled'} ({'Finalized' if group['finalized'] else 'Editing'})", expanded=not group['finalized']):
         if not group['finalized']:
             # Group inputs
             st.write("**Group Details**")
@@ -139,7 +138,7 @@ for group_idx, group in enumerate(st.session_state.groups):
 if st.session_state.groups:
     st.subheader("All Groups")
     for i, group in enumerate(st.session_state.groups):
-        with st.expander(f"Group {i + 1}: {group['group_data']['Bay Design']} ({'Finalized' if group['finalized'] else 'Editing'})"):
+        with st.expander(f"Group {i + 1}: {group['group_data']['Bay Design'] or 'Untitled'} ({'Finalized' if group['finalized'] else 'Editing'})"):
             st.write("**Group Details**")
             st.json(group['group_data'])
             if group['bins']:
