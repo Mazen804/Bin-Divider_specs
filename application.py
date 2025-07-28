@@ -67,11 +67,11 @@ def generate_excel(groups):
     for r_idx, r in enumerate(dataframe_to_rows(df, index=False, header=True), 1):
         ws.append(r)
 
-    # Merge and center cells for specified columns
+    # Merge and center cells for columns A to I
     current_row = 2  # Start after header
     for row_count in group_row_counts:
         if row_count > 0:
-            # Merge and center columns A to I (Group Name, Floor, Mod, Depth, Start Aisle, End Aisle, # of Aisles, # of Bays, Total # of Shelves per Bay)
+            # Merge and center columns A to I (Group Name to Total # of Shelves per Bay)
             for col_idx in range(1, 10):  # Columns A to I (1-based index)
                 ws.merge_cells(start_row=current_row, start_column=col_idx, end_row=current_row + row_count - 1, end_column=col_idx)
                 ws.cell(row=current_row, column=col_idx).alignment = Alignment(horizontal='center')
@@ -82,15 +82,15 @@ def generate_excel(groups):
     for row_count in group_row_counts:
         for _ in range(row_count):
             # # of Aisles (G) = End Aisle (F) - Start Aisle (E) + 1
-            ws[f'G{current_row}'] = f'=F{current_row}-E{current_row}+1'
+            ws.cell(row=current_row, column=7).value = f'=F{current_row}-E{current_row}+1'
             # Qty Per Bay (R) = # of Shelves per Bay (P) * Qty bins per Shelf (Q)
-            ws[f'R{current_row}'] = f'=P{current_row}*Q{current_row}'
+            ws.cell(row=current_row, column=18).value = f'=P{current_row}*Q{current_row}'
             # Total Quantity (S) = Qty Per Bay (R) * # of Bays (H) * # of Aisles (G)
-            ws[f'S{current_row}'] = f'=R{current_row}*H{current_row}*G{current_row}'
+            ws.cell(row=current_row, column=19).value = f'=R{current_row}*H{current_row}*G{current_row}'
             # Bin Gross CBM (U) = Depth (mm) (L) * Height (mm) (M) * Width (mm) (N) / 1,000,000
-            ws[f'U{current_row}'] = f'=(L{current_row}*M{current_row}*N{current_row})/1000000'
+            ws.cell(row=current_row, column=21).value = f'=(L{current_row}*M{current_row}*N{current_row})/1000000'
             # Bin Net CBM (V) = Bin Gross CBM (U) * UT (T)
-            ws[f'V{current_row}'] = f'=U{current_row}*T{current_row}'
+            ws.cell(row=current_row, column=22).value = f'=U{current_row}*T{current_row}'
             current_row += 1
 
     wb.save(output)
