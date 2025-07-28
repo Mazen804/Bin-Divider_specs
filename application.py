@@ -49,49 +49,42 @@ def generate_excel(groups):
     group_row_counts = []
     for group in groups:
         group_data = group['group_data']
-        for bin_data in group['bins']:
+        bin_rows = group['bins'] if group['bins'] else [{}]
+        for bin_data in bin_rows:
             row = {**group_data, **bin_data}
-            row['Lip (cm)'] = '-' if row['Lip (cm)'] == 0.0 else row['Lip (cm)']
+            row['Lip (cm)'] = '-' if row.get('Lip (cm)', 0.0) == 0.0 else row.get('Lip (cm)', 0.0)
             for col in columns:
                 if col not in row:
                     row[col] = None
             df = pd.concat([df, pd.DataFrame([row])], ignore_index=True)
-        group_row_counts.append(len(group['bins']) if group['bins'] else 1)
+        group_row_counts.append(len(bin_rows))
 
     output = io.BytesIO()
     wb = Workbook()
     ws = wb.active
     ws.title = "Bin Box"
 
-    # Write DataFrame to Excel
+    # Write DataFrame to Excel and set formulas
+    current_row = 1
     for r_idx, r in enumerate(dataframe_to_rows(df, index=False, header=True), 1):
         ws.append(r)
+        if r_idx > 1:  # Skip header
+            # Set formulas for calculated fields
+            ws.cell(row=current_row, column=7).value = f'=F{current_row}-E{current_row}+1'  # # of Aisles
+            ws.cell(row=current_row, column=18).value = f'=P{current_row}*Q{current_row}'  # Qty Per Bay
+            ws.cell(row=current_row, column=19).value = f'=R{current_row}*H{current_row}*G{current_row}'  # Total Quantity
+            ws.cell(row=current_row, column=21).value = f'=(L{current_row}*M{current_row}*N{current_row})/1000000'  # Bin Gross CBM
+            ws.cell(row=current_row, column=22).value = f'=U{current_row}*T{current_row}'  # Bin Net CBM
+        current_row += 1
 
     # Merge and center cells for columns A to I
     current_row = 2  # Start after header
     for row_count in group_row_counts:
         if row_count > 0:
-            # Merge and center columns A to I (Group Name to Total # of Shelves per Bay)
-            for col_idx in range(1, 10):  # Columns A to I (1-based index)
+            for col_idx in range(1, 10):  # Columns A to I
                 ws.merge_cells(start_row=current_row, start_column=col_idx, end_row=current_row + row_count - 1, end_column=col_idx)
                 ws.cell(row=current_row, column=col_idx).alignment = Alignment(horizontal='center')
             current_row += row_count
-
-    # Add formulas for calculated fields
-    current_row = 2
-    for row_count in group_row_counts:
-        for _ in range(row_count):
-            # # of Aisles (G) = End Aisle (F) - Start Aisle (E) + 1
-            ws.cell(row=current_row, column=7).value = f'=F{current_row}-E{current_row}+1'
-            # Qty Per Bay (R) = # of Shelves per Bay (P) * Qty bins per Shelf (Q)
-            ws.cell(row=current_row, column=18).value = f'=P{current_row}*Q{current_row}'
-            # Total Quantity (S) = Qty Per Bay (R) * # of Bays (H) * # of Aisles (G)
-            ws.cell(row=current_row, column=19).value = f'=R{current_row}*H{current_row}*G{current_row}'
-            # Bin Gross CBM (U) = Depth (mm) (L) * Height (mm) (M) * Width (mm) (N) / 1,000,000
-            ws.cell(row=current_row, column=21).value = f'=(L{current_row}*M{current_row}*N{current_row})/1000000'
-            # Bin Net CBM (V) = Bin Gross CBM (U) * UT (T)
-            ws.cell(row=current_row, column=22).value = f'=U{current_row}*T{current_row}'
-            current_row += 1
 
     wb.save(output)
     output.seek(0)
@@ -167,6 +160,12 @@ for group_idx, group in enumerate(st.session_state.groups):
                     group['bins'][bin_idx] = calculate_fields(group['group_data'], group['bins'][bin_idx])
                 group['finalized'] = True
                 st.success(f"Group {group_idx + 1} finalized!")
+                st.rerun()
+        else:
+            # Allow editing finalized groups
+            if st.button(f"Edit Group {group_idx + 1}", key=f"edit_{group_idx}"):
+                group['finalized'] = False
+                st.success(f"Group {group_idx + 1} opened for editing!")
                 st.rerun()
 
 # Display finalized groups
