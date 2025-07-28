@@ -131,7 +131,7 @@ for group_idx, group in enumerate(st.session_state.groups):
                     group['bins'][bin_idx] = calculate_fields(group['group_data'], group['bins'][bin_idx])
                 group['finalized'] = True
                 st.success(f"Group {group_idx + 1} finalized!")
-                st.experimental_rerun()
+                st.rerun()
 
 # Display finalized groups
 if st.session_state.groups:
@@ -159,4 +159,4 @@ if st.session_state.groups:
 # Clear all data
 if st.button("Clear All Data"):
     st.session_state.groups = []
-    st.experimental_rerun()
+    st.rerun()
