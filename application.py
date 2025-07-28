@@ -49,6 +49,8 @@ def generate_excel(groups):
         group_data = group['group_data']
         for bin_data in group['bins']:
             row = {**group_data, **bin_data}
+            # Set Lip (cm) to "-" if 0.0
+            row['Lip (cm)'] = '-' if row['Lip (cm)'] == 0.0 else row['Lip (cm)']
             for col in columns:
                 if col not in row:
                     row[col] = None
@@ -152,7 +154,7 @@ if st.session_state.groups:
     st.download_button(
         label="Download Excel File",
         data=excel_data,
-        file_name="RUH5_Bin_Divider_Specification.xlsx",
+        file_name="Bin_Divider_Specs.xlsx",
         mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
     )
 
