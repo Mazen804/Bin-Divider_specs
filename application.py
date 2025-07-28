@@ -4,6 +4,7 @@ import io
 from openpyxl import Workbook
 from openpyxl.utils.dataframe import dataframe_to_rows
 from openpyxl.styles import Alignment
+import copy
 
 # Set page configuration
 st.set_page_config(page_title="Bin Divider Specification Generator", page_icon=":package:", layout="wide")
@@ -31,7 +32,7 @@ if 'groups' not in st.session_state:
 def calculate_fields(group_data, bin_data):
     bin_data['# of Aisles'] = group_data['End Aisle'] - group_data['Start Aisle'] + 1
     bin_data['Qty Per Bay'] = bin_data['# of Shelves per Bay'] * bin_data['Qty bins per Shelf']
-    bin_data['Total Quantity'] = bin_data['Qty Per Bay'] * group_data['# of Bays'] * bin_data['# of Aisles']
+    bin_data['Total Quantity'] = bin_data['Qty Per Bay'] * group_data['# of Bays']  # Updated: Removed * # of Aisles
     bin_data['Bin Gross CBM'] = (bin_data['Depth (mm)'] * bin_data['Height (mm)'] * bin_data['Width (mm)']) / 1_000_000
     bin_data['Bin Net CBM'] = bin_data['Bin Gross CBM'] * bin_data['UT']
     return bin_data
@@ -66,19 +67,21 @@ def generate_excel(groups):
 
     # Write DataFrame to Excel and set formulas
     current_row = 1
+    group_start_rows = []
     for r_idx, r in enumerate(dataframe_to_rows(df, index=False, header=True), 1):
         ws.append(r)
         if r_idx > 1:  # Skip header
+            group_start_rows.append(current_row if r_idx == 2 else group_start_rows[-1])
             # Set formulas for calculated fields
             ws.cell(row=current_row, column=7).value = f'=F{current_row}-E{current_row}+1'  # # of Aisles
             ws.cell(row=current_row, column=18).value = f'=P{current_row}*Q{current_row}'  # Qty Per Bay
-            ws.cell(row=current_row, column=19).value = f'=R{current_row}*H{current_row}*G{current_row}'  # Total Quantity
+            ws.cell(row=current_row, column=19).value = f'=R{current_row}*$H${group_start_rows[-1]}'  # Total Quantity
             ws.cell(row=current_row, column=21).value = f'=(L{current_row}*M{current_row}*N{current_row})/1000000'  # Bin Gross CBM
             ws.cell(row=current_row, column=22).value = f'=U{current_row}*T{current_row}'  # Bin Net CBM
         current_row += 1
 
     # Merge and center cells for columns A to I
-    current_row = 2  # Start after header
+    current_row = 2
     for row_count in group_row_counts:
         if row_count > 0:
             for col_idx in range(1, 10):  # Columns A to I
@@ -162,7 +165,6 @@ for group_idx, group in enumerate(st.session_state.groups):
                 st.success(f"Group {group_idx + 1} finalized!")
                 st.rerun()
         else:
-            # Allow editing finalized groups
             if st.button(f"Edit Group {group_idx + 1}", key=f"edit_{group_idx}"):
                 group['finalized'] = False
                 st.success(f"Group {group_idx + 1} opened for editing!")
@@ -180,6 +182,12 @@ if st.session_state.groups:
                 for j, bin_data in enumerate(group['bins']):
                     st.write(f"Bin {j + 1}:")
                     st.json(bin_data)
+            if st.button(f"Copy Group {i + 1}", key=f"copy_{i}"):
+                new_group = copy.deepcopy(group)
+                new_group['finalized'] = False
+                st.session_state.groups.append(new_group)
+                st.success(f"Group {i + 1} copied!")
+                st.rerun()
 
 # Download Excel file
 if st.session_state.groups:
